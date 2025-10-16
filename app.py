@@ -227,6 +227,9 @@ elif menu == "🧾 PQRS / Derecho de Petición":
 # =============================
 # 💬 ATENCIÓN AL CLIENTE (IA NUEVA)
 # =============================
+# =============================
+# 💬 ATENCIÓN AL CLIENTE (CHAT IA)
+# =============================
 elif menu == "💬 Atención al Cliente":
     st.header("💬 Asistente Académico Virtual")
 
@@ -236,47 +239,95 @@ elif menu == "💬 Atención al Cliente":
     else:
         import requests, json
 
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        # Encabezado del chat
+        st.markdown("""
+        <div style='display:flex; align-items:center; gap:10px; margin-bottom:15px;'>
+            <img src="https://cdn-icons-png.flaticon.com/512/4712/4712100.png" width="60">
+            <div>
+                <div style='font-size:1.3em; font-weight:700; color:#D4AF37;'>🤖 Chris Académico</div>
+                <div style='color:#BBBBBB; font-size:0.9em;'>Colegio Abogados Col – Atención al estudiante</div>
+            </div>
+        </div>
+        <hr style='border:1px solid #D4AF37;'>
+        """, unsafe_allow_html=True)
 
+        # Mostrar historial del chat con burbujas
         for msg in st.session_state["chat_history"]:
             if msg["role"] == "user":
                 st.markdown(
-                    f"<div style='text-align:right; background:#D4AF37; color:#000; "
-                    "padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>",
-                    unsafe_allow_html=True)
+                    f"""
+                    <div style='text-align:right;
+                                background-color:#D4AF37;
+                                color:#000;
+                                padding:10px 15px;
+                                border-radius:15px;
+                                margin:8px 0;
+                                display:inline-block;
+                                max-width:80%;
+                                float:right;'>
+                        {msg["content"]}
+                    </div>
+                    <div style='clear:both;'></div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
                 st.markdown(
-                    f"<div style='text-align:left; background:#111; color:#FFFFFF; "
-                    "border:1.5px solid #D4AF37; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>",
-                    unsafe_allow_html=True)
+                    f"""
+                    <div style='text-align:left;
+                                background-color:#111;
+                                color:#FFFFFF;
+                                border:1.5px solid #D4AF37;
+                                padding:10px 15px;
+                                border-radius:15px;
+                                margin:8px 0;
+                                display:inline-block;
+                                max-width:80%;
+                                float:left;'>
+                        {msg["content"]}
+                    </div>
+                    <div style='clear:both;'></div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
+        # Input del usuario
         prompt = st.chat_input("✍️ Escribe tu mensaje...")
         if prompt:
             st.session_state["chat_history"].append({"role": "user", "content": prompt})
 
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+
             payload = {
                 "model": "gpt-4o-mini",
                 "messages": [
-                    {"role": "system", "content":
-                     "Eres un asistente académico del Colegio Abogados Col. "
-                     "Responde con amabilidad sobre pagos, certificados, trámites y horarios."},
+                    {"role": "system", "content": (
+                        "Eres Chris, un asistente académico del Colegio Abogados Col. "
+                        "Responde con amabilidad, precisión y empatía a estudiantes o padres. "
+                        "Puedes hablar sobre pagos, certificados, PQRS, horarios o procesos académicos. "
+                        "Usa un tono profesional pero cálido, y nunca inventes información institucional falsa."
+                    )},
                     *st.session_state["chat_history"]
                 ]
             }
 
-            resp = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                data=json.dumps(payload),
-                timeout=30
-            )
+            try:
+                resp = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    data=json.dumps(payload),
+                    timeout=30
+                )
 
-            if resp.status_code == 200:
-                reply = resp.json()["choices"][0]["message"]["content"]
-                st.session_state["chat_history"].append({"role": "assistant", "content": reply})
-                st.rerun()
-            else:
-                st.error(f"⚠️ Error al contactar la IA: {resp.status_code} – {resp.text}")
+                if resp.status_code == 200:
+                    reply = resp.json()["choices"][0]["message"]["content"]
+                    st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+                    st.rerun()
+                else:
+                    st.error(f"⚠️ Error al contactar la IA: {resp.status_code} – {resp.text}")
+
+            except Exception as e:
+                st.error(f"⚠️ Error en la conexión con la IA: {e}")
