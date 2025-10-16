@@ -225,109 +225,111 @@ elif menu == "🧾 PQRS / Derecho de Petición":
                 st.success(f"✅ Solicitud radicada.\n\nNúmero de radicado: **{radicado}**")
 
 # =============================
-# 💬 ATENCIÓN AL CLIENTE (IA NUEVA)
-# =============================
-# =============================
-# 💬 ATENCIÓN AL CLIENTE (CHAT IA)
+# 💬 ATENCIÓN AL CLIENTE (CHAT CON CONSULTA REAL)
 # =============================
 elif menu == "💬 Atención al Cliente":
     st.header("💬 Asistente Académico Virtual")
 
+    import requests, json
+
     api_key = st.secrets.get("OPENAI_API_KEY")
     if not api_key:
-        st.error("⚠️ No se encontró la clave de OpenAI. Configúrala en Settings → Secrets.")
-    else:
-        import requests, json
+        st.error("⚠️ Falta configurar la clave de OpenAI en Secrets.")
+        st.stop()
 
-        # Encabezado del chat
-        st.markdown("""
-        <div style='display:flex; align-items:center; gap:10px; margin-bottom:15px;'>
-            <img src="https://cdn-icons-png.flaticon.com/512/4712/4712100.png" width="60">
-            <div>
-                <div style='font-size:1.3em; font-weight:700; color:#D4AF37;'>🤖 Chris Académico</div>
-                <div style='color:#BBBBBB; font-size:0.9em;'>Colegio Abogados Col – Atención al estudiante</div>
-            </div>
+    # Cargar base de datos
+    try:
+        df_cartera = pd.read_excel("base_cartera_colegio.xlsx", engine="openpyxl")
+    except Exception as e:
+        st.warning(f"No se pudo cargar la base de cartera: {e}")
+        df_cartera = pd.DataFrame()
+
+    # Encabezado del asistente
+    st.markdown("""
+    <div style='display:flex; align-items:center; gap:10px; margin-bottom:15px;'>
+        <img src="https://cdn-icons-png.flaticon.com/512/4712/4712100.png" width="60">
+        <div>
+            <div style='font-size:1.3em; font-weight:700; color:#D4AF37;'>🤖 Chris Académico</div>
+            <div style='color:#BBBBBB; font-size:0.9em;'>Colegio Abogados Col – Consultas y pagos</div>
         </div>
-        <hr style='border:1px solid #D4AF37;'>
-        """, unsafe_allow_html=True)
+    </div>
+    <hr style='border:1px solid #D4AF37;'>
+    """, unsafe_allow_html=True)
 
-        # Mostrar historial del chat con burbujas
-        for msg in st.session_state["chat_history"]:
-            if msg["role"] == "user":
-                st.markdown(
-                    f"""
-                    <div style='text-align:right;
-                                background-color:#D4AF37;
-                                color:#000;
-                                padding:10px 15px;
-                                border-radius:15px;
-                                margin:8px 0;
-                                display:inline-block;
-                                max-width:80%;
-                                float:right;'>
-                        {msg["content"]}
-                    </div>
-                    <div style='clear:both;'></div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            else:
-                st.markdown(
-                    f"""
-                    <div style='text-align:left;
-                                background-color:#111;
-                                color:#FFFFFF;
-                                border:1.5px solid #D4AF37;
-                                padding:10px 15px;
-                                border-radius:15px;
-                                margin:8px 0;
-                                display:inline-block;
-                                max-width:80%;
-                                float:left;'>
-                        {msg["content"]}
-                    </div>
-                    <div style='clear:both;'></div>
-                    """,
-                    unsafe_allow_html=True
-                )
+    # Mostrar historial
+    for msg in st.session_state["chat_history"]:
+        color_user = "#D4AF37" if msg["role"] == "user" else "#111"
+        text_color = "#000" if msg["role"] == "user" else "#FFF"
+        border = "" if msg["role"] == "user" else "border:1.5px solid #D4AF37;"
+        align = "right" if msg["role"] == "user" else "left"
+        st.markdown(
+            f"""
+            <div style='text-align:{align}; background:{color_user}; color:{text_color};
+                        {border} padding:10px 15px; border-radius:15px; margin:8px 0;
+                        display:inline-block; max-width:80%; float:{align};'>
+                {msg["content"]}
+            </div>
+            <div style='clear:both;'></div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        # Input del usuario
-        prompt = st.chat_input("✍️ Escribe tu mensaje...")
-        if prompt:
-            st.session_state["chat_history"].append({"role": "user", "content": prompt})
+    # Chat input
+    prompt = st.chat_input("✍️ Escribe tu mensaje o pregunta...")
+    if prompt:
+        st.session_state["chat_history"].append({"role": "user", "content": prompt})
 
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
+        # Detectar documento y consulta de pagos
+        respuesta_datos = ""
+        palabras_clave = ["cuánto debo", "saldo", "pendiente", "meses", "deuda", "pago", "pensiones", "cartera"]
 
-            payload = {
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": (
-                        "Eres Chris, un asistente académico del Colegio Abogados Col. "
-                        "Responde con amabilidad, precisión y empatía a estudiantes o padres. "
-                        "Puedes hablar sobre pagos, certificados, PQRS, horarios o procesos académicos. "
-                        "Usa un tono profesional pero cálido, y nunca inventes información institucional falsa."
-                    )},
-                    *st.session_state["chat_history"]
-                ]
-            }
-
-            try:
-                resp = requests.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers=headers,
-                    data=json.dumps(payload),
-                    timeout=30
-                )
-
-                if resp.status_code == 200:
-                    reply = resp.json()["choices"][0]["message"]["content"]
-                    st.session_state["chat_history"].append({"role": "assistant", "content": reply})
-                    st.rerun()
+        if any(palabra in prompt.lower() for palabra in palabras_clave):
+            doc_match = [s for s in prompt.split() if s.isdigit()]
+            if doc_match:
+                docu = doc_match[0]
+                if not df_cartera.empty:
+                    datos = df_cartera[df_cartera["DOCUMENTO"].astype(str) == docu]
+                    if not datos.empty:
+                        nombre = datos["NOMBRE_COMPLETO"].iloc[0]
+                        total_pend = datos.loc[datos["ESTADO_PAGO"] == "PENDIENTE", "TOTAL_MENSUAL"].sum()
+                        meses_pend = ", ".join(datos.loc[datos["ESTADO_PAGO"] == "PENDIENTE", "MES"])
+                        if total_pend > 0:
+                            respuesta_datos = (
+                                f"📘 Estudiante {nombre} ({docu}) tiene un saldo pendiente de "
+                                f"${total_pend:,.0f} correspondiente a los meses {meses_pend}."
+                                "\nPuedes realizar tu pago en línea ingresando al módulo de cartera."
+                            )
+                        else:
+                            respuesta_datos = f"✅ Estudiante {nombre} ({docu}) está al día en sus pagos."
+                    else:
+                        respuesta_datos = "No se encontró ese número de documento en la base."
                 else:
-                    st.error(f"⚠️ Error al contactar la IA: {resp.status_code} – {resp.text}")
+                    respuesta_datos = "No se pudo consultar la base de datos en este momento."
 
-            except Exception as e:
-                st.error(f"⚠️ Error en la conexión con la IA: {e}")
+        # Consultar IA de OpenAI
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        mensajes = [
+            {"role": "system", "content": (
+                "Eres Chris, asistente académico del Colegio Abogados Col. "
+                "Responde amablemente y de forma profesional sobre pagos, certificados, PQRS y clases. "
+                "Si el sistema adjunta información contable, intégrala en tu respuesta."
+            )},
+            *st.session_state["chat_history"]
+        ]
+
+        if respuesta_datos:
+            mensajes.append({"role": "system", "content": respuesta_datos})
+
+        resp = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            data=json.dumps({"model": "gpt-4o-mini", "messages": mensajes}),
+            timeout=30
+        )
+
+        if resp.status_code == 200:
+            reply = resp.json()["choices"][0]["message"]["content"]
+            st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+            st.rerun()
+        else:
+            st.error(f"⚠️ Error al contactar la IA: {resp.status_code} – {resp.text}")
