@@ -234,7 +234,8 @@ elif menu == "💬 Atención al Cliente":
     if not api_key:
         st.error("⚠️ No se encontró la clave de OpenAI. Configúrala en Settings → Secrets.")
     else:
-        client = OpenAI(api_key=api_key)
+        os.environ["OPENAI_API_KEY"] = api_key
+        client = OpenAI()
 
         for msg in st.session_state["chat_history"]:
             if msg["role"] == "user":
