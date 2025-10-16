@@ -234,25 +234,49 @@ elif menu == "💬 Atención al Cliente":
     if not api_key:
         st.error("⚠️ No se encontró la clave de OpenAI. Configúrala en Settings → Secrets.")
     else:
-        os.environ["OPENAI_API_KEY"] = api_key
-        client = OpenAI()
+        import requests, json
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
 
         for msg in st.session_state["chat_history"]:
             if msg["role"] == "user":
-                st.markdown(f"<div style='text-align:right; background:#D4AF37; color:#000; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='text-align:right; background:#D4AF37; color:#000; "
+                    "padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>",
+                    unsafe_allow_html=True)
             else:
-                st.markdown(f"<div style='text-align:left; background:#111; color:#FFFFFF; border:1.5px solid #D4AF37; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='text-align:left; background:#111; color:#FFFFFF; "
+                    "border:1.5px solid #D4AF37; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>",
+                    unsafe_allow_html=True)
 
         prompt = st.chat_input("✍️ Escribe tu mensaje...")
         if prompt:
             st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Eres un asistente académico del Colegio Abogados Col. Responde con amabilidad sobre pagos, certificados, trámites y horarios."},
+
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content":
+                     "Eres un asistente académico del Colegio Abogados Col. "
+                     "Responde con amabilidad sobre pagos, certificados, trámites y horarios."},
                     *st.session_state["chat_history"]
                 ]
+            }
+
+            resp = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                data=json.dumps(payload),
+                timeout=30
             )
-            reply = response.choices[0].message.content
-            st.session_state["chat_history"].append({"role": "assistant", "content": reply})
-            st.rerun()
+
+            if resp.status_code == 200:
+                reply = resp.json()["choices"][0]["message"]["content"]
+                st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+                st.rerun()
+            else:
+                st.error(f"⚠️ Error al contactar la IA: {resp.status_code} – {resp.text}")
