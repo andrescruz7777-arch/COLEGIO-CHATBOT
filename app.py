@@ -1,10 +1,10 @@
 # ==================================================
-# 🎓 CHATBOT EDUCATIVO – COLEGIO ABOGADOS COL
+# 🎓 CHATBOT EDUCATIVO – COLEGIO ABOGADOS COL (Dark)
 # ==================================================
 import streamlit as st
 import pandas as pd
 import hashlib, datetime, io, os, urllib.parse
-import openai
+from openai import OpenAI
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -20,35 +20,36 @@ if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
 # =============================
-# 🎨 ESTILOS VISUALES
+# 🎨 ESTILOS MODO OSCURO
 # =============================
 st.markdown("""
 <style>
 html, body, .stApp {
-    background-color: #FFFFFF !important;
-    color: #1A237E !important;
+    background-color: #000000 !important;
+    color: #FFFFFF !important;
 }
-h1, h2, h3, h4 { color:#1A237E !important; text-align:center; font-weight:700; }
+h1, h2, h3, h4, h5, h6, p, label, div, span {
+    color: #FFFFFF !important;
+}
 div.stButton > button {
     background-color:#1A237E !important;
     color:#FFFFFF !important;
     border:none !important;
-    border-radius:12px !important;
+    border-radius:10px !important;
     padding:12px 40px !important;
     font-weight:600 !important;
-    box-shadow:0 3px 8px rgba(26,35,126,.4);
+    box-shadow:0 3px 10px rgba(212,175,55,.4);
 }
 div.stButton > button:hover {
     background-color:#D4AF37 !important;
-    color:#1A237E !important;
+    color:#000000 !important;
     transform:scale(1.05);
 }
 .sidebar .sidebar-content {
-    background-color:#F9F9FC !important;
+    background-color:#111111 !important;
 }
-input, textarea, select {
-    color:#1A237E !important;
-    font-weight:600;
+.stDataFrame, .stTextInput, .stSelectbox, .stTextArea {
+    color:#FFFFFF !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -58,9 +59,9 @@ input, textarea, select {
 # =============================
 st.markdown("""
 <div style='text-align:center;'>
-    <img src="https://raw.githubusercontent.com/andrescruz7777-arch/colegio-chatbot/main/logo_colegio.png" width="180">
-    <h1 style="margin-bottom:0;">Colegio Abogados Col</h1>
-    <h4 style="color:#D4AF37; margin-top:0;">Excelencia, Ética y Conocimiento</h4>
+    <img src="https://raw.githubusercontent.com/andrescruz7777-arch/colegio-chatbot/main/logo_colegio.png" width="160">
+    <h1 style="color:#D4AF37;">Colegio Abogados Col</h1>
+    <h4 style="color:#FFFFFF;">Excelencia, Ética y Conocimiento</h4>
 </div>
 """, unsafe_allow_html=True)
 
@@ -81,13 +82,11 @@ def generar_codigo_seguro(documento: str) -> str:
     return hashlib.sha256(str(documento).encode('utf-8')).hexdigest()[:10].upper()
 
 def generar_paz_y_salvo_pdf(data):
-    """Genera un PDF con sello, logo y firma."""
+    """Genera PDF con fondo oscuro y sello institucional"""
     nombre = data["NOMBRE_COMPLETO"]
     documento = data["DOCUMENTO"]
     curso = data["CURSO"]
-    fecha_hoy = datetime.datetime.now()
-    fecha_corta = fecha_hoy.strftime("%Y-%m-%d")
-    fecha_larga = fecha_hoy.strftime("%d de %B de %Y")
+    fecha = datetime.datetime.now().strftime("%d de %B de %Y")
     codigo = generar_codigo_seguro(documento)
 
     buffer = io.BytesIO()
@@ -95,8 +94,8 @@ def generar_paz_y_salvo_pdf(data):
                             rightMargin=72, leftMargin=72,
                             topMargin=72, bottomMargin=72)
     styles = getSampleStyleSheet()
-    normal = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=12, leading=18)
-    titulo = ParagraphStyle('Titulo', parent=styles['Title'], fontSize=20, textColor=colors.HexColor("#1A237E"))
+    normal = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=12, textColor=colors.white, leading=18)
+    titulo = ParagraphStyle('Titulo', parent=styles['Title'], fontSize=20, textColor=colors.HexColor("#D4AF37"))
 
     contenido = []
     try:
@@ -114,18 +113,15 @@ def generar_paz_y_salvo_pdf(data):
     ]
 
     texto = (
-        f"La Tesorería del Colegio Abogados Col, identificado con NIT 900123456-7, "
-        f"certifica que el(la) estudiante {nombre}, identificado(a) con documento {documento}, "
+        f"Se certifica que el(la) estudiante {nombre}, identificado(a) con documento {documento}, "
         f"perteneciente al curso {curso}, se encuentra a paz y salvo por todo concepto económico "
-        f"con la institución a la fecha {fecha_corta}.\n\n"
-        "Este certificado se expide a solicitud del interesado para los fines que estime convenientes.\n\n"
-        f"Código de verificación: {codigo}\n"
-        "Puede verificarse en línea o en la Secretaría del colegio.\n\n"
-        f"Bogotá D.C., {fecha_larga}\n\n"
-        "______________________________\n"
+        f"con la institución educativa al día {fecha}.\n\n"
+        "Código de verificación: " + codigo +
+        "\n\n______________________________\n"
         "Lic. Carolina Suárez\n"
         "Tesorería – Colegio Abogados Col"
     )
+
     contenido.append(Paragraph(texto, normal))
     doc.build(contenido)
     buffer.seek(0)
@@ -147,7 +143,6 @@ if menu == "📊 Estado de Cartera":
         if not docu.strip():
             st.warning("Ingrese un documento válido.")
             st.stop()
-
         data = df[df["DOCUMENTO"].astype(str) == docu.strip()]
         if data.empty:
             st.error("No se encontró información.")
@@ -230,7 +225,7 @@ elif menu == "🧾 PQRS / Derecho de Petición":
                 st.success(f"✅ Solicitud radicada.\n\nNúmero de radicado: **{radicado}**")
 
 # =============================
-# 💬 ATENCIÓN AL CLIENTE
+# 💬 ATENCIÓN AL CLIENTE (IA NUEVA)
 # =============================
 elif menu == "💬 Atención al Cliente":
     st.header("💬 Asistente Académico Virtual")
@@ -239,24 +234,24 @@ elif menu == "💬 Atención al Cliente":
     if not api_key:
         st.error("⚠️ No se encontró la clave de OpenAI. Configúrala en Settings → Secrets.")
     else:
-        openai.api_key = api_key
+        client = OpenAI(api_key=api_key)
 
         for msg in st.session_state["chat_history"]:
             if msg["role"] == "user":
-                st.markdown(f"<div style='text-align:right; background:#D4AF37; color:#1A237E; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:right; background:#D4AF37; color:#000; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<div style='text-align:left; background:#FFFFFF; color:#1A237E; border:1.5px solid #1A237E; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:left; background:#111; color:#FFFFFF; border:1.5px solid #D4AF37; padding:8px; border-radius:12px; margin:5px;'>{msg['content']}</div>", unsafe_allow_html=True)
 
         prompt = st.chat_input("✍️ Escribe tu mensaje...")
         if prompt:
-            st.session_state["chat_history"].append({"role":"user","content":prompt})
-            response = openai.ChatCompletion.create(
+            st.session_state["chat_history"].append({"role": "user", "content": prompt})
+            response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role":"system","content":"Eres un asistente académico del Colegio Abogados Col. Responde con amabilidad sobre pagos, certificados, trámites y horarios."},
+                    {"role": "system", "content": "Eres un asistente académico del Colegio Abogados Col. Responde con amabilidad sobre pagos, certificados, trámites y horarios."},
                     *st.session_state["chat_history"]
                 ]
             )
-            reply = response["choices"][0]["message"]["content"]
-            st.session_state["chat_history"].append({"role":"assistant","content":reply})
-            st.experimental_rerun()
+            reply = response.choices[0].message.content
+            st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+            st.rerun()
