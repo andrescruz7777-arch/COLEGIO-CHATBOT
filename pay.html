@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>PSE - Pago Simulado — Colegio Abogados Col</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f7fafc; color:#111; display:flex; align-items:center; justify-content:center; height:100vh; }
+    .card { background:white; padding:28px; border-radius:12px; max-width:560px; width:90%; box-shadow:0 10px 30px rgba(27,22,140,0.08); }
+    h1 { color:#1B168C; margin-bottom:8px; }
+    .info { margin:14px 0; padding:12px; background:#f9fafb; border-left:4px solid #FFD700; border-radius:6px; }
+    .btn { display:inline-block; padding:12px 22px; border-radius:10px; background:#1B168C; color:white; text-decoration:none; font-weight:700; }
+    .btn.red { background:#F43B63; }
+    .small { color:#666; font-size:0.9rem; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>PSE — Pago Simulado</h1>
+    <div class="info" id="info">
+      Cargando detalles de pago...
+    </div>
+
+    <div style="margin-top:18px;">
+      <a id="confirmBtn" class="btn" href="#">Confirmar pago (Simulado)</a>
+      <a id="cancelBtn" class="btn red" style="margin-left:12px;" href="#">Cancelar</a>
+    </div>
+    <p class="small">Este es un entorno de prueba. No se efectúa ningún cobro real.</p>
+  </div>
+
+<script>
+  function qs() {
+    const s = {};
+    location.search.substring(1).split("&").forEach(function(p){
+      if(!p) return;
+      const kv = p.split("=");
+      s[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]||"");
+    });
+    return s;
+  }
+  const params = qs();
+  const code = params.code || "N/A";
+  const amount = params.amount ? new Intl.NumberFormat('es-CO').format(params.amount) : "0";
+  const name = params.name || "Usuario";
+  const ref = params.ref || "";
+
+  document.getElementById("info").innerHTML = `
+    <strong>Beneficiario:</strong> Colegio Abogados Col<br/>
+    <strong>Nombre:</strong> ${name}<br/>
+    <strong>Monto:</strong> $ ${amount} COP<br/>
+    <strong>Referencia:</strong> ${ref}<br/>
+    <strong>Código verif.:</strong> ${code}
+  `;
+
+  // URL de retorno (dentro de la app) - example placeholder
+  const retornoBase = "https://tu-app.streamlitapp.io/"; // <- reemplaza por tu RETURN_URL_BASE público
+  const successUrl = retornoBase + `?status=success&code=${encodeURIComponent(code)}&ref=${encodeURIComponent(ref)}&amount=${encodeURIComponent(params.amount||"0")}`;
+  const failUrl = retornoBase + `?status=fail&code=${encodeURIComponent(code)}&ref=${encodeURIComponent(ref)}`;
+
+  document.getElementById("confirmBtn").href = successUrl;
+  document.getElementById("cancelBtn").href = failUrl;
+</script>
+</body>
+</html>
